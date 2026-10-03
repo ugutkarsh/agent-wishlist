@@ -1,15 +1,16 @@
 import { Dashboard } from "@/components/dashboard";
+import { requireAccount } from "@/lib/account";
 import { createServiceClient } from "@/lib/supabase-server";
 import { parseCluster, parseWish, sortClusters, type Cluster } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-async function loadDashboard(): Promise<{ clusters: Cluster[]; wishes: NonNullable<ReturnType<typeof parseWish>>[] }> {
+async function loadDashboard(userId: string): Promise<{ clusters: Cluster[]; wishes: NonNullable<ReturnType<typeof parseWish>>[] }> {
   const supabase = createServiceClient();
   const [{ data: clusterRows, error: clusterError }, { data: wishRows, error: wishError }] =
     await Promise.all([
-      supabase.from("clusters").select("*").order("score", { ascending: false }),
-      supabase.from("wishes").select("*").order("created_at", { ascending: false }),
+      supabase.from("clusters").select("*").eq("user_id", userId).order("score", { ascending: false }),
+      supabase.from("wishes").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
     ]);
 
   if (clusterError) throw new Error(clusterError.message);
@@ -40,11 +41,27 @@ async function loadDashboard(): Promise<{ clusters: Cluster[]; wishes: NonNullab
 }
 
 export default async function Home() {
+  const account = await requireAccount();
   try {
-    const { clusters, wishes } = await loadDashboard();
-    return <Dashboard initialClusters={clusters} initialWishes={wishes} />;
+    const { clusters, wishes } = await loadDashboard(account.userId);
+    return (
+      <Dashboard
+        initialClusters={clusters}
+        initialWishes={wishes}
+        userId={account.userId}
+        email={account.email}
+      />
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not load the wishlist";
-    return <Dashboard initialClusters={[]} initialWishes={[]} loadError={message} />;
+    return (
+      <Dashboard
+        initialClusters={[]}
+        initialWishes={[]}
+        userId={account.userId}
+        email={account.email}
+        loadError={message}
+      />
+    );
   }
 }

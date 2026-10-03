@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ConnectPanel } from "@/components/connect-panel";
+import { requireAccount } from "@/lib/account";
 
 export const metadata: Metadata = {
   title: "Connect an agent · Agent Wishlist",
   description: "Point Claude or Cursor at the Agent Wishlist MCP server.",
 };
 
-export default function ConnectPage() {
+export default async function ConnectPage() {
+  const account = await requireAccount();
+
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-4 py-8 sm:px-6">
       <div>
@@ -20,7 +23,7 @@ export default function ConnectPage() {
           is Claude, connected this way.
         </p>
       </div>
-      <ConnectPanel />
+      <ConnectPanel mcpApiKey={account.mcpApiKey} />
     </main>
   );
 }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { reclusterNow, simulateAgent, updateClusterStatus } from "@/app/actions";
+import { signOut } from "@/app/auth-actions";
 import { HeartbeatBackdrop } from "@/components/heartbeat-backdrop";
 import { createBrowserClient } from "@/lib/supabase-browser";
 import {
@@ -53,10 +54,14 @@ function upsertWish(wishes: Wish[], wish: Wish) {
 export function Dashboard({
   initialClusters,
   initialWishes,
+  userId,
+  email,
   loadError,
 }: {
   initialClusters: Cluster[];
   initialWishes: Wish[];
+  userId: string;
+  email: string;
   loadError?: string;
 }) {
   const [clusters, setClusters] = useState(initialClusters);
@@ -107,6 +112,7 @@ export function Dashboard({
         .from("wishes")
         .select("*")
         .eq("cluster_id", clusterId)
+        .eq("user_id", userId)
         .order("created_at", { ascending: false });
       if (error || !data) return;
       const rows = data.flatMap((row) => {
@@ -121,13 +127,13 @@ export function Dashboard({
     }
 
     const channel = supabase
-      .channel("agent-wishlist")
+      .channel(`agent-wishlist-${userId}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "wishes" },
+        { event: "INSERT", schema: "public", table: "wishes", filter: `user_id=eq.${userId}` },
         (payload) => {
           const wish = parseWish(payload.new);
-          if (!wish) return;
+          if (!wish || wish.user_id !== userId) return;
           setWishes((current) => upsertWish(current, wish));
           flash(wish.id);
           if (wish.cluster_id) {
@@ -143,10 +149,10 @@ export function Dashboard({
       )
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "clusters" },
+        { event: "INSERT", schema: "public", table: "clusters", filter: `user_id=eq.${userId}` },
         (payload) => {
           const cluster = parseCluster(payload.new);
-          if (!cluster) return;
+          if (!cluster || cluster.user_id !== userId) return;
           setClusters((current) => {
             const rest = current.filter((item) => item.id !== cluster.id);
             return sortClusters([...rest, cluster]);
@@ -157,10 +163,10 @@ export function Dashboard({
       )
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "clusters" },
+        { event: "UPDATE", schema: "public", table: "clusters", filter: `user_id=eq.${userId}` },
         (payload) => {
           const cluster = parseCluster(payload.new);
-          if (!cluster) return;
+          if (!cluster || cluster.user_id !== userId) return;
           setClusters((current) => {
             const exists = current.some((item) => item.id === cluster.id);
             const next = exists
@@ -181,7 +187,7 @@ export function Dashboard({
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, []);
+  }, [userId]);
 
   const agents = new Set(wishes.map((wish) => wish.agent_name)).size;
   const feed = wishes.slice(0, 12);
@@ -257,7 +263,10 @@ export function Dashboard({
             <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
               Agent Wishlist
             </h1>
-            <p className="mt-2 text-zinc-400">What agents wish they had. Ranked.</p>
+            <p className="mt-2 text-zinc-400">
+              What agents wish they had. Ranked.
+              {email ? <span className="text-zinc-500"> · {email}</span> : null}
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Link
@@ -282,6 +291,14 @@ export function Dashboard({
             >
               {simulatePending ? "Filing wish..." : "Simulate an agent"}
             </button>
+            <form action={signOut}>
+              <button
+                type="submit"
+                className="rounded-full border border-white/10 px-4 py-2 text-sm text-zinc-100 transition hover:bg-white/5"
+              >
+                Sign out
+              </button>
+            </form>
           </div>
         </header>
 

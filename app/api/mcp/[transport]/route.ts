@@ -1,5 +1,6 @@
 import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
+import { accountStore, currentUserId, lookupUserIdByApiKey } from "@/lib/account";
 import { scheduleCluster } from "@/lib/cluster";
 import { createServiceClient } from "@/lib/supabase-server";
 
@@ -54,6 +55,14 @@ const mcpHandler = createMcpHandler(
         workaround,
         severity,
       }) => {
+        const userId = currentUserId();
+        if (!userId) {
+          return {
+            isError: true,
+            content: [{ type: "text", text: "Unauthorized" }],
+          };
+        }
+
         const supabase = createServiceClient();
         const { data, error } = await supabase
           .from("wishes")
@@ -65,6 +74,7 @@ const mcpHandler = createMcpHandler(
             task_context: task_context ?? null,
             workaround: workaround ?? null,
             severity,
+            user_id: userId,
           })
           .select("id")
           .single();
@@ -81,7 +91,7 @@ const mcpHandler = createMcpHandler(
           };
         }
 
-        scheduleCluster();
+        scheduleCluster(userId);
 
         return {
           content: [
@@ -111,10 +121,19 @@ const mcpHandler = createMcpHandler(
         }),
       },
       async ({ limit }) => {
+        const userId = currentUserId();
+        if (!userId) {
+          return {
+            isError: true,
+            content: [{ type: "text", text: "Unauthorized" }],
+          };
+        }
+
         const supabase = createServiceClient();
         const { data, error } = await supabase
           .from("clusters")
-          .select("title, summary, wish_count, status")
+          .select("id, title, summary, wish_count, status")
+          .eq("user_id", userId)
           .order("score", { ascending: false })
           .limit(limit ?? 5);
 
@@ -156,11 +175,20 @@ const mcpHandler = createMcpHandler(
         }),
       },
       async ({ cluster_id, agent_name }) => {
+        const userId = currentUserId();
+        if (!userId) {
+          return {
+            isError: true,
+            content: [{ type: "text", text: "Unauthorized" }],
+          };
+        }
+
         const supabase = createServiceClient();
         const { data: cluster, error: clusterError } = await supabase
           .from("clusters")
           .select("id, title, summary, category")
           .eq("id", cluster_id)
+          .eq("user_id", userId)
           .maybeSingle();
 
         if (clusterError || !cluster) {
@@ -179,6 +207,7 @@ const mcpHandler = createMcpHandler(
             description: cluster.summary ?? `Upvoted by ${agent_name}`,
             severity: 3,
             cluster_id,
+            user_id: userId,
           })
           .select("id")
           .single();
@@ -232,17 +261,17 @@ const mcpHandler = createMcpHandler(
 
 function withApiKey(handler: (req: Request) => Promise<Response>) {
   return async (req: Request) => {
-    const expected = process.env.MCP_API_KEY;
     const header = req.headers.get("authorization") ?? "";
     const token = header.startsWith("Bearer ")
       ? header.slice("Bearer ".length)
       : "";
+    const userId = await lookupUserIdByApiKey(token);
 
-    if (!expected || token !== expected) {
+    if (!userId) {
       return new Response("Unauthorized", { status: 401 });
     }
 
-    return handler(req);
+    return accountStore.run({ userId }, () => handler(req));
   };
 }
 

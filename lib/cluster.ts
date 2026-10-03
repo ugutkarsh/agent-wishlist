@@ -41,10 +41,27 @@ export type ClusterSummary = {
 
 const SYSTEM_PROMPT = `You triage "wishes" filed by AI agents. For each unclustered wish, assign it to an existing cluster id or propose a new cluster with a short title (max 8 words, phrased as the thing to build, e.g. "Read access to production logs") and a one-sentence summary. Group semantically similar wishes. Respond with ONLY JSON: {"assignments":[{"wish_id":"...","cluster_id":"existing-uuid-or-null","new_cluster_key":"string-or-null"}],"new_clusters":[{"key":"...","title":"...","summary":"...","category":"tool|permission|data|other"}]}`;
 
-let inFlight: Promise<ClusterSummary> | null = null;
-let lastStartedAt = 0;
-let followUpTimer: ReturnType<typeof setTimeout> | null = null;
-let needsFollowUp = false;
+type Lane = {
+  inFlight: Promise<ClusterSummary> | null;
+  lastStartedAt: number;
+  timer: ReturnType<typeof setTimeout> | null;
+  needsFollowUp: boolean;
+};
+
+const lanes = new Map<string, Lane>();
+
+function lane(userId: string): Lane {
+  const existing = lanes.get(userId);
+  if (existing) return existing;
+  const created: Lane = {
+    inFlight: null,
+    lastStartedAt: 0,
+    timer: null,
+    needsFollowUp: false,
+  };
+  lanes.set(userId, created);
+  return created;
+}
 
 function blankToNull(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -57,55 +74,58 @@ function limitWords(title: string): string {
   return title.trim().split(/\s+/).slice(0, 8).join(" ");
 }
 
-function armFollowUp() {
-  if (followUpTimer || !needsFollowUp) return;
-  const wait = Math.max(COOLDOWN_MS - (Date.now() - lastStartedAt), 0);
-  followUpTimer = setTimeout(() => {
-    followUpTimer = null;
-    if (!needsFollowUp) return;
-    needsFollowUp = false;
-    void clusterWishes().catch((error) => {
+function armFollowUp(userId: string) {
+  const job = lane(userId);
+  if (job.timer || !job.needsFollowUp) return;
+  const wait = Math.max(COOLDOWN_MS - (Date.now() - job.lastStartedAt), 0);
+  job.timer = setTimeout(() => {
+    job.timer = null;
+    if (!job.needsFollowUp) return;
+    job.needsFollowUp = false;
+    void clusterWishes(userId).catch((error) => {
       console.error("[agent-wishlist] clustering failed", error);
     });
   }, wait);
 }
 
-/** Non-blocking. Runs immediately, then at most once every 10 seconds. */
-export function scheduleCluster(): void {
-  if (inFlight || Date.now() - lastStartedAt < COOLDOWN_MS) {
-    needsFollowUp = true;
-    armFollowUp();
+/** Non-blocking. Runs immediately, then at most once every 10 seconds per account. */
+export function scheduleCluster(userId: string): void {
+  const job = lane(userId);
+  if (job.inFlight || Date.now() - job.lastStartedAt < COOLDOWN_MS) {
+    job.needsFollowUp = true;
+    armFollowUp(userId);
     return;
   }
 
-  void clusterWishes().catch((error) => {
+  void clusterWishes(userId).catch((error) => {
     console.error("[agent-wishlist] clustering failed", error);
   });
 }
 
-export function clusterWishes(): Promise<ClusterSummary> {
-  if (inFlight) {
-    needsFollowUp = true;
-    armFollowUp();
-    return inFlight;
+export function clusterWishes(userId: string): Promise<ClusterSummary> {
+  const job = lane(userId);
+  if (job.inFlight) {
+    job.needsFollowUp = true;
+    armFollowUp(userId);
+    return job.inFlight;
   }
 
-  lastStartedAt = Date.now();
-  inFlight = execute().finally(() => {
-    inFlight = null;
-    if (needsFollowUp) armFollowUp();
+  job.lastStartedAt = Date.now();
+  job.inFlight = execute(userId).finally(() => {
+    job.inFlight = null;
+    if (job.needsFollowUp) armFollowUp(userId);
   });
-  return inFlight;
+  return job.inFlight;
 }
 
-async function execute(): Promise<ClusterSummary> {
+async function execute(userId: string): Promise<ClusterSummary> {
   const supabase = createServiceClient();
   let clustered = 0;
   let created = 0;
   const clusterIds = new Set<string>();
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    const summary = await assignOnce();
+    const summary = await assignOnce(userId);
     clustered += summary.clustered;
     created += summary.created;
     for (const id of summary.clusterIds) clusterIds.add(id);
@@ -114,6 +134,7 @@ async function execute(): Promise<ClusterSummary> {
     const { count, error } = await supabase
       .from("wishes")
       .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
       .is("cluster_id", null);
     if (error) throw new Error(error.message);
     if (!count) break;
@@ -122,7 +143,7 @@ async function execute(): Promise<ClusterSummary> {
   return { clustered, created, clusterIds: [...clusterIds] };
 }
 
-async function assignOnce(): Promise<ClusterSummary> {
+async function assignOnce(userId: string): Promise<ClusterSummary> {
   const supabase = createServiceClient();
   const [{ data: wishes, error: wishError }, { data: clusters, error: clusterError }] =
     await Promise.all([
@@ -131,8 +152,9 @@ async function assignOnce(): Promise<ClusterSummary> {
         .select(
           "id, agent_name, category, title, description, task_context, workaround, severity",
         )
+        .eq("user_id", userId)
         .is("cluster_id", null),
-      supabase.from("clusters").select("id, title, summary, category"),
+      supabase.from("clusters").select("id, title, summary, category").eq("user_id", userId),
     ]);
 
   if (wishError) throw new Error(wishError.message);
@@ -216,6 +238,7 @@ async function assignOnce(): Promise<ClusterSummary> {
         title: limitWords(cluster.title),
         summary: cluster.summary.trim(),
         category: cluster.category,
+        user_id: userId,
       })
       .select("id")
       .single();
@@ -243,6 +266,7 @@ async function assignOnce(): Promise<ClusterSummary> {
         .from("wishes")
         .update({ cluster_id: clusterId })
         .eq("id", wishId)
+        .eq("user_id", userId)
         .is("cluster_id", null);
       if (error) throw new Error(error.message);
       touched.add(clusterId);

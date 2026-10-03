@@ -14,6 +14,7 @@ export type Wish = {
   workaround: string | null;
   severity: number | null;
   cluster_id: string | null;
+  user_id: string | null;
   created_at: string;
 };
 
@@ -25,6 +26,7 @@ export type Cluster = {
   wish_count: number;
   score: number;
   status: Status;
+  user_id: string | null;
   created_at: string;
   updated_at: string;
   wishes: Wish[];
@@ -71,6 +73,7 @@ export function parseWish(value: unknown): Wish | null {
     severity:
       row.severity == null ? null : Math.min(5, Math.max(1, asNumber(row.severity, 1))),
     cluster_id: asNullableString(row.cluster_id),
+    user_id: asNullableString(row.user_id),
     created_at:
       typeof row.created_at === "string" ? row.created_at : new Date().toISOString(),
   };
@@ -89,6 +92,7 @@ export function parseCluster(value: unknown): Cluster | null {
     wish_count: asNumber(row.wish_count),
     score: asNumber(row.score),
     status: asStatus(row.status),
+    user_id: asNullableString(row.user_id),
     created_at:
       typeof row.created_at === "string" ? row.created_at : new Date().toISOString(),
     updated_at:

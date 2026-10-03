@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 const SYSTEM_PROMPT =
   "If you can't complete a task because of a missing tool, permission, or data, call file_wish before giving up";
 
-function config(url: string) {
+function config(url: string, apiKey: string) {
   return JSON.stringify(
     {
       mcpServers: {
@@ -19,7 +19,7 @@ function config(url: string) {
             "Authorization:${AUTH_HEADER}",
           ],
           env: {
-            AUTH_HEADER: "Bearer YOUR_MCP_API_KEY",
+            AUTH_HEADER: `Bearer ${apiKey}`,
           },
         },
       },
@@ -29,7 +29,7 @@ function config(url: string) {
   );
 }
 
-export function ConnectPanel() {
+export function ConnectPanel({ mcpApiKey }: { mcpApiKey: string }) {
   const [url, setUrl] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
 
@@ -52,7 +52,7 @@ export function ConnectPanel() {
     window.setTimeout(() => setCopied(null), 1600);
   }
 
-  const snippet = url ? config(url) : "";
+  const snippet = url ? config(url, mcpApiKey) : "";
 
   return (
     <div className="space-y-8">
@@ -76,9 +76,9 @@ export function ConnectPanel() {
       <section className="space-y-3">
         <h2 className="text-lg font-medium">Claude Desktop and Cursor</h2>
         <p className="text-sm leading-6 text-zinc-400">
-          Replace <span className="text-zinc-200">YOUR_MCP_API_KEY</span> with the
-          value from your <span className="text-zinc-200">.env.local</span>. Paste
-          the JSON into Claude Desktop at{" "}
+          This config already includes the MCP key issued to your account. Wishes
+          filed with it show up only on your dashboard. Paste the JSON into Claude
+          Desktop at{" "}
           <span className="text-zinc-200">
             ~/Library/Application Support/Claude/claude_desktop_config.json
           </span>{" "}

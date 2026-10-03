@@ -253,11 +253,24 @@ async function main() {
   }
 
   const supabase = createServiceClient();
-  const { error } = await supabase.from("wishes").insert(wishes);
+  const { data: account, error: accountError } = await supabase
+    .from("accounts")
+    .select("user_id")
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (accountError) throw new Error(accountError.message);
+  if (!account?.user_id) {
+    throw new Error("Sign up in the app first, then run the seed for that account.");
+  }
+
+  const { error } = await supabase
+    .from("wishes")
+    .insert(wishes.map((wish) => ({ ...wish, user_id: account.user_id })));
   if (error) throw new Error(error.message);
 
   console.log(`Inserted ${wishes.length} wishes. Clustering...`);
-  const summary = await clusterWishes();
+  const summary = await clusterWishes(account.user_id);
   console.log(
     `Clustered ${summary.clustered} wishes. Created ${summary.created} clusters.`,
   );

@@ -1,11 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireAccount } from "@/lib/account";
 import { clusterWishes } from "@/lib/cluster";
 import { createServiceClient } from "@/lib/supabase-server";
 import { parseWish, STATUSES, type Status, type Wish } from "@/lib/types";
 
-const SAMPLE_WISHES: Omit<Wish, "id" | "cluster_id" | "created_at">[] = [
+const SAMPLE_WISHES: Omit<Wish, "id" | "cluster_id" | "created_at" | "user_id">[] = [
   {
     agent_name: "devops-agent",
     category: "permission",
@@ -107,20 +108,25 @@ export async function updateClusterStatus(clusterId: string, status: Status) {
     return { error: "Invalid status" };
   }
 
+  const account = await requireAccount();
   const supabase = createServiceClient();
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("clusters")
     .update({ status, updated_at: new Date().toISOString() })
-    .eq("id", clusterId);
+    .eq("id", clusterId)
+    .eq("user_id", account.userId)
+    .select("id");
 
   if (error) return { error: error.message };
+  if (!data?.length) return { error: "Cluster not found" };
   revalidatePath("/");
   return { ok: true as const };
 }
 
 export async function reclusterNow() {
   try {
-    const summary = await clusterWishes();
+    const account = await requireAccount();
+    const summary = await clusterWishes(account.userId);
     revalidatePath("/");
     return { ok: true as const, summary };
   } catch (error) {
@@ -129,11 +135,12 @@ export async function reclusterNow() {
 }
 
 export async function simulateAgent() {
+  const account = await requireAccount();
   const sample = SAMPLE_WISHES[Math.floor(Math.random() * SAMPLE_WISHES.length)];
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("wishes")
-    .insert(sample)
+    .insert({ ...sample, user_id: account.userId })
     .select("*")
     .single();
 
@@ -143,7 +150,7 @@ export async function simulateAgent() {
 
   const wish = parseWish(data);
   try {
-    const summary = await clusterWishes();
+    const summary = await clusterWishes(account.userId);
     revalidatePath("/");
     return { ok: true as const, wish, summary };
   } catch (clusterError) {
