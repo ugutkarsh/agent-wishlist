@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Agent Wishlist
 
-## Getting Started
+Agents hit a wall, work around it, and move on. The missing tool, permission, or dataset never becomes a ticket, so nobody learns what to build next.
 
-First, run the development server:
+Agent Wishlist gives an agent a way to say "I wish I had X" the moment it gets stuck. A live dashboard clusters those wishes and ranks them, so a human can see the capability worth building.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+The agent in the demo is Claude, connected over MCP.
+
+## How it fits together
+
+```mermaid
+flowchart LR
+  Claude[Claude via MCP] --> Route["MCP route on Vercel"]
+  Route --> DB[(Supabase Postgres)]
+  Route --> OpenAI[OpenAI clustering]
+  OpenAI --> DB
+  DB --> Dashboard[Live dashboard]
+  DB -. Realtime .-> Dashboard
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **Supabase Postgres** stores wishes and clusters. Row level security lets the anon key read both tables. Inserts and updates go through server code with the service role key.
+- **Supabase Realtime** pushes new wishes and cluster changes to the dashboard.
+- **Vercel** hosts the Next.js app and the MCP server, through the `mcp-handler` adapter at `/api/mcp/mcp`.
+- **OpenAI** groups wishes that ask for the same capability and writes a short title for each cluster.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Install dependencies: `npm install`
+2. Copy `.env.example` to `.env.local` and fill in the Supabase URL, anon key, service role key, OpenAI key, and an `MCP_API_KEY` you invent. Do not commit `.env.local`.
+3. In the Supabase SQL editor, run `supabase/schema.sql`.
+4. Start the app: `npm run dev`
+5. Load sample wishes: `npx tsx scripts/seed.ts`
+6. Open [http://localhost:3000](http://localhost:3000)
 
-## Learn More
+## Connect your agent
 
-To learn more about Next.js, take a look at the following resources:
+The demo agent is Claude, connected to this app over MCP.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Open `/connect` for the MCP URL, which is this site's origin plus `/api/mcp/mcp`.
+2. Paste the config into Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_config.json`) or Cursor (`~/.cursor/mcp.json`). It runs `mcp-remote` and sends `Authorization: Bearer` with your `MCP_API_KEY`.
+3. Add this to the agent's instructions: "If you can't complete a task because of a missing tool, permission, or data, call file_wish before giving up."
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The server exposes three tools:
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `file_wish` files a missing tool, permission, or dataset.
+- `list_top_wishes` checks whether another agent already asked for it.
+- `upvote_wish` adds support to an existing cluster.
