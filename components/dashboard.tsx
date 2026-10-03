@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { reclusterNow, simulateAgent, updateClusterStatus } from "@/app/actions";
+import { HeartbeatBackdrop } from "@/components/heartbeat-backdrop";
 import { createBrowserClient } from "@/lib/supabase-browser";
 import {
   parseCluster,
@@ -248,8 +249,9 @@ export function Dashboard({
   }
 
   return (
-    <div>
-      <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-8 sm:px-6">
+    <div className="relative isolate min-h-[calc(100dvh-3.5rem)]">
+      <HeartbeatBackdrop tokens={wishes.length} />
+      <div className="relative z-10 mx-auto flex max-w-6xl flex-col gap-8 px-4 py-8 sm:px-6">
         <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
@@ -292,7 +294,7 @@ export function Dashboard({
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
           <main className="space-y-4">
             {clusters.length === 0 ? (
-              <section className="rounded-2xl border border-dashed border-white/15 bg-white/[0.03] p-8">
+              <section className="rounded-2xl border border-dashed border-white/15 bg-zinc-950/55 p-8">
                 <h2 className="text-lg font-medium">No wishes clustered yet</h2>
                 <p className="mt-3 max-w-xl text-sm leading-6 text-zinc-400">
                   When an agent gets stuck, it should call{" "}
@@ -308,7 +310,7 @@ export function Dashboard({
               clusters.map((cluster, index) => (
                 <article
                   key={cluster.id}
-                  className={`rounded-2xl border border-white/10 bg-white/[0.03] p-5 ${
+                  className={`rounded-2xl border border-white/10 bg-zinc-950/55 p-5 ${
                     flashIds.includes(cluster.id) ? "wish-flash" : ""
                   }`}
                 >
@@ -393,7 +395,7 @@ export function Dashboard({
             )}
           </main>
 
-          <aside className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 lg:sticky lg:top-6">
+          <aside className="rounded-2xl border border-white/10 bg-zinc-950/55 p-4 lg:sticky lg:top-6">
             <h2 className="text-sm font-medium tracking-wide text-zinc-300 uppercase">
               Live feed
             </h2>
@@ -446,7 +448,7 @@ export function Dashboard({
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+    <div className="rounded-2xl border border-white/10 bg-zinc-950/55 px-4 py-3">
       <p className="text-xs tracking-wide text-zinc-500 uppercase">{label}</p>
       <p className="mt-1 font-mono text-2xl">{value}</p>
     </div>
