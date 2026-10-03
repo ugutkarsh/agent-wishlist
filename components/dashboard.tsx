@@ -258,48 +258,48 @@ export function Dashboard({
     <div className="relative isolate min-h-[calc(100dvh-3.5rem)]">
       <HeartbeatBackdrop tokens={wishes.length} />
       <div className="relative z-10 mx-auto flex max-w-6xl flex-col gap-8 px-4 py-8 sm:px-6">
-        <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+        <header className="flex flex-col gap-3">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <h1 className="shrink-0 text-3xl font-semibold tracking-tight sm:text-4xl">
               Agent Wishlist
             </h1>
-            <p className="mt-2 text-zinc-400">
-              What agents wish they had. Ranked.
-              {email ? <span className="text-zinc-500"> · {email}</span> : null}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link
-              href="/connect"
-              className="rounded-full border border-white/10 px-4 py-2 text-sm text-zinc-100 transition hover:bg-white/5"
-            >
-              Connect an agent
-            </Link>
-            <button
-              type="button"
-              onClick={onRecluster}
-              disabled={clusterPending}
-              className="rounded-full border border-white/10 px-4 py-2 text-sm text-zinc-100 transition hover:bg-white/5 disabled:opacity-50"
-            >
-              {clusterPending ? "Clustering..." : "Re-cluster now"}
-            </button>
-            <button
-              type="button"
-              onClick={onSimulate}
-              disabled={simulatePending}
-              className="rounded-full bg-amber-300 px-4 py-2 text-sm font-medium text-zinc-950 transition hover:bg-amber-200 disabled:opacity-50"
-            >
-              {simulatePending ? "Filing wish..." : "Simulate an agent"}
-            </button>
-            <form action={signOut}>
-              <button
-                type="submit"
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href="/connect"
                 className="rounded-full border border-white/10 px-4 py-2 text-sm text-zinc-100 transition hover:bg-white/5"
               >
-                Sign out
+                Connect an agent
+              </Link>
+              <button
+                type="button"
+                onClick={onRecluster}
+                disabled={clusterPending}
+                className="rounded-full border border-white/10 px-4 py-2 text-sm text-zinc-100 transition hover:bg-white/5 disabled:opacity-50"
+              >
+                {clusterPending ? "Clustering..." : "Re-cluster now"}
               </button>
-            </form>
+              <button
+                type="button"
+                onClick={onSimulate}
+                disabled={simulatePending}
+                className="rounded-full bg-amber-300 px-4 py-2 text-sm font-medium text-zinc-950 transition hover:bg-amber-200 disabled:opacity-50"
+              >
+                {simulatePending ? "Filing wish..." : "Simulate an agent"}
+              </button>
+              <form action={signOut}>
+                <button
+                  type="submit"
+                  className="rounded-full border border-white/10 px-4 py-2 text-sm text-zinc-100 transition hover:bg-white/5"
+                >
+                  Sign out
+                </button>
+              </form>
+            </div>
           </div>
+          <p className="text-lg text-zinc-300">
+            The capabilities agents keep asking for — ranked by demand.
+          </p>
+          {email ? <p className="-mt-1 text-sm text-zinc-500">{email}</p> : null}
         </header>
 
         <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -356,12 +356,12 @@ export function Dashboard({
                   <div className="mt-4 flex flex-wrap items-center gap-2">
                     {cluster.category ? (
                       <span
-                        className={`rounded-full px-2.5 py-1 text-xs ring-1 ring-inset ${categoryClass[cluster.category]}`}
+                        className={`rounded-full px-3.5 py-1.5 text-sm ring-1 ring-inset ${categoryClass[cluster.category]}`}
                       >
                         {cluster.category}
                       </span>
                     ) : null}
-                    <span className="rounded-full bg-white/5 px-2.5 py-1 text-xs text-zinc-300">
+                    <span className="rounded-full bg-white/5 px-3.5 py-1.5 text-sm text-zinc-300">
                       {cluster.wish_count} {cluster.wish_count === 1 ? "wish" : "wishes"}
                     </span>
                     <label className="sr-only" htmlFor={`status-${cluster.id}`}>
@@ -374,7 +374,7 @@ export function Dashboard({
                       onChange={(event) =>
                         onStatus(cluster.id, event.target.value as Status)
                       }
-                      className={`rounded-full bg-zinc-950 px-2.5 py-1 text-xs ring-1 ring-inset disabled:opacity-50 ${statusClass[cluster.status]}`}
+                      className={`rounded-full bg-zinc-950 px-3.5 py-1.5 text-sm ring-1 ring-inset disabled:opacity-50 ${statusClass[cluster.status]}`}
                     >
                       <option value="open">open</option>
                       <option value="planned">planned</option>
@@ -465,9 +465,9 @@ export function Dashboard({
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-zinc-950/55 px-4 py-3">
-      <p className="text-xs tracking-wide text-zinc-500 uppercase">{label}</p>
-      <p className="mt-1 font-mono text-2xl">{value}</p>
+    <div className="rounded-2xl border border-white/10 bg-zinc-950/55 px-5 py-5">
+      <p className="text-sm tracking-wide text-zinc-500 uppercase">{label}</p>
+      <p className="mt-2 font-mono text-3xl">{value}</p>
     </div>
   );
 }

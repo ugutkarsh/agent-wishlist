@@ -14,10 +14,10 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Agent Wishlist",
-  description: "What agents wish they had. Ranked.",
+  description: "The capabilities agents keep asking for — ranked by demand.",
   openGraph: {
     title: "Agent Wishlist",
-    description: "What agents wish they had. Ranked.",
+    description: "The capabilities agents keep asking for — ranked by demand.",
   },
 };
 
