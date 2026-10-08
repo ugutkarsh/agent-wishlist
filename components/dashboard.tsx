@@ -5,6 +5,7 @@ import { useEffect, useState, useTransition } from "react";
 import { reclusterNow, simulateAgent, updateClusterStatus } from "@/app/actions";
 import { signOut } from "@/app/auth-actions";
 import { HeartbeatBackdrop } from "@/components/heartbeat-backdrop";
+import { Mark } from "@/components/mark";
 import { createBrowserClient } from "@/lib/supabase-browser";
 import {
   parseCluster,
@@ -260,7 +261,8 @@ export function Dashboard({
       <div className="relative z-10 mx-auto flex max-w-6xl flex-col gap-8 px-4 py-8 sm:px-6">
         <header className="flex flex-col gap-3">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <h1 className="shrink-0 text-3xl font-semibold tracking-tight sm:text-4xl">
+            <h1 className="flex shrink-0 items-center gap-3 text-3xl font-semibold tracking-tight sm:text-4xl">
+              <Mark className="h-10 w-10 sm:h-12 sm:w-12" />
               Agent Wishlist
             </h1>
             <div className="flex flex-wrap gap-2">

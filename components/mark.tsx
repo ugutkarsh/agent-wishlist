@@ -1,0 +1,21 @@
+export function Mark({ className = "h-10 w-10" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 32 32" className={className} aria-hidden="true">
+      <defs>
+        <linearGradient id="agent-wishlist-mark" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#7dd3fc" />
+          <stop offset="0.55" stopColor="#d8b4fe" />
+          <stop offset="1" stopColor="#fdba74" />
+        </linearGradient>
+      </defs>
+      <rect width="32" height="32" rx="9" fill="url(#agent-wishlist-mark)" />
+      <path
+        fill="#09090b"
+        d="M10 7H22A4 4 0 0 1 26 11V18A4 4 0 0 1 22 22H14L9 26V22A4 4 0 0 1 6 18V11A4 4 0 0 1 10 7Z"
+      />
+      <rect x="10" y="10.5" width="12" height="2" rx="1" fill="url(#agent-wishlist-mark)" />
+      <rect x="10" y="13.75" width="9" height="2" rx="1" fill="url(#agent-wishlist-mark)" />
+      <rect x="10" y="17" width="6" height="2" rx="1" fill="url(#agent-wishlist-mark)" />
+    </svg>
+  );
+}
