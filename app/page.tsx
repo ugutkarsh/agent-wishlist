@@ -1,5 +1,7 @@
 import { Dashboard } from "@/components/dashboard";
-import { requireAccount } from "@/lib/account";
+import { Landing } from "@/components/landing";
+import { ensureAccount } from "@/lib/account";
+import { createAuthClient } from "@/lib/supabase-auth";
 import { createServiceClient } from "@/lib/supabase-server";
 import { parseCluster, parseWish, sortClusters, type Cluster } from "@/lib/types";
 
@@ -41,7 +43,11 @@ async function loadDashboard(userId: string): Promise<{ clusters: Cluster[]; wis
 }
 
 export default async function Home() {
-  const account = await requireAccount();
+  const supabase = await createAuthClient();
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) return <Landing />;
+
+  const account = await ensureAccount(data.user);
   try {
     const { clusters, wishes } = await loadDashboard(account.userId);
     return (
