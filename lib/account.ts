@@ -7,8 +7,14 @@ import { createServiceClient } from "@/lib/supabase-server";
 export type Account = {
   userId: string;
   email: string;
+  displayName: string;
   mcpApiKey: string;
 };
+
+function readDisplayName(user: { user_metadata?: Record<string, unknown> }) {
+  const name = user.user_metadata?.display_name;
+  return typeof name === "string" ? name.trim() : "";
+}
 
 export const accountStore = new AsyncLocalStorage<{ userId: string }>();
 
@@ -32,7 +38,11 @@ function newKey() {
   return `awl_${randomBytes(24).toString("hex")}`;
 }
 
-export async function ensureAccount(user: { id: string; email?: string | null }) {
+export async function ensureAccount(user: {
+  id: string;
+  email?: string | null;
+  user_metadata?: Record<string, unknown>;
+}) {
   const supabase = createServiceClient();
   const existing = await supabase
     .from("accounts")
@@ -53,6 +63,7 @@ export async function ensureAccount(user: { id: string; email?: string | null })
     return {
       userId: existing.data.user_id,
       email: user.email ?? "",
+      displayName: readDisplayName(user),
       mcpApiKey: existing.data.mcp_api_key,
     } satisfies Account;
   }
@@ -70,6 +81,7 @@ export async function ensureAccount(user: { id: string; email?: string | null })
   return {
     userId: created.data.user_id,
     email: user.email ?? "",
+    displayName: readDisplayName(user),
     mcpApiKey: created.data.mcp_api_key,
   } satisfies Account;
 }

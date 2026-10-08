@@ -50,6 +50,7 @@ export default async function Home() {
         initialWishes={wishes}
         userId={account.userId}
         email={account.email}
+        displayName={account.displayName}
       />
     );
   } catch (error) {
@@ -60,6 +61,7 @@ export default async function Home() {
         initialWishes={[]}
         userId={account.userId}
         email={account.email}
+        displayName={account.displayName}
         loadError={message}
       />
     );

@@ -27,9 +27,15 @@ export async function signIn(formData: FormData): Promise<AuthResult> {
 export async function signUp(formData: FormData): Promise<AuthResult> {
   const parsed = credentials(formData);
   if ("error" in parsed) return parsed;
+  const name = String(formData.get("name") ?? "").trim().replace(/\s+/g, " ");
+  if (name.length < 2) return { error: "Enter your name." };
 
   const supabase = await createAuthClient();
-  const { data, error } = await supabase.auth.signUp(parsed);
+  const { data, error } = await supabase.auth.signUp({
+    email: parsed.email,
+    password: parsed.password,
+    options: { data: { display_name: name } },
+  });
   if (error) return { error: error.message };
   if (!data.session) {
     return {

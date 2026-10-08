@@ -57,12 +57,14 @@ export function Dashboard({
   initialWishes,
   userId,
   email,
+  displayName,
   loadError,
 }: {
   initialClusters: Cluster[];
   initialWishes: Wish[];
   userId: string;
   email: string;
+  displayName: string;
   loadError?: string;
 }) {
   const [clusters, setClusters] = useState(initialClusters);
@@ -301,7 +303,11 @@ export function Dashboard({
           <p className="text-lg text-zinc-300">
             The capabilities agents keep asking for — ranked by demand.
           </p>
-          {email ? <p className="-mt-1 text-sm text-zinc-500">{email}</p> : null}
+          {displayName || email ? (
+            <p className="-mt-1 text-sm text-zinc-500">
+              {[displayName, email].filter(Boolean).join(" · ")}
+            </p>
+          ) : null}
         </header>
 
         <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
